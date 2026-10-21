@@ -105,8 +105,10 @@ mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
 # Download the authentic backdoored source archive
-wget -q --show-progress https://raw.githubusercontent.com/nikdubois/vsftpd-2.3.4/master/vsftpd-2.3.4.tar.gz -O vsftpd-2.3.4.tar.gz || \
-wget -q --show-progress https://github.com/nikdubois/vsftpd-2.3.4/raw/master/vsftpd-2.3.4.tar.gz -O vsftpd-2.3.4.tar.gz
+# wget -q --show-progress https://raw.githubusercontent.com/nikdubois/vsftpd-2.3.4/master/vsftpd-2.3.4.tar.gz -O vsftpd-2.3.4.tar.gz || \
+# wget -q --show-progress https://github.com/nikdubois/vsftpd-2.3.4/raw/master/vsftpd-2.3.4.tar.gz -O vsftpd-2.3.4.tar.gz
+wget -O vsftpd-2.3.4.tar.gz \
+https://security.appspot.com/downloads/vsftpd-2.3.4.tar.gz
 
 tar -xzf vsftpd-2.3.4.tar.gz
 cd vsftpd-2.3.4
@@ -114,6 +116,7 @@ cd vsftpd-2.3.4
 echo "[*] Patching Makefile to link required crypto and cap libraries..."
 # Ensure linking against crypt and cap libraries properly on modern Linux
 sed -i 's/LIBS\t=\t`\.\/vsf_findlibs.sh`/LIBS\t=\t-lcrypt -lcap/g' Makefile
+sed -i 's/-lcrypt -lcap/-lcrypt -lcap -lpam/' Makefile
 
 echo "[*] Compiling vsftpd 2.3.4..."
 make
