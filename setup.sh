@@ -87,7 +87,7 @@ mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
 # Download the authentic backdoored vsftpd-2.3.4 source code
-git clone https://security.appspot.com/downloads/vsftpd-2.3.4.tar.gz "$BUILD_DIR/vsftpd-2.3.4"
+git clone https://github.com/DoctorKisow/vsftpd-2.3.4.git "$BUILD_DIR/vsftpd-2.3.4"
 cd "$BUILD_DIR/vsftpd-2.3.4"
 
 
