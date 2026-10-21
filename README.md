@@ -50,14 +50,17 @@ nmap -sV -sC -p 21,80 <TARGET_PRIVATE_IP>
 
 ---
 
-### Step 2: Web Inspection
+### Step 2: Web Inspection (Directory Listing)
 Navigate to `http://<TARGET_PRIVATE_IP>` in your browser or with curl:
 ```bash
 curl http://<TARGET_PRIVATE_IP>
 ```
-Displays the **Cybetary Academy Gateway** internal landing page.
+Because **Directory Listing (`Options +Indexes`)** is enabled, students/attackers can browse:
+- `/backups/` -> contains `db_backup.sql`
+- `/secret_notes/` -> contains `ftp_credentials.txt` (giving hints about the target vsftpd service!)
 
 ---
+
 
 ### Step 3: Exploitation with Metasploit (`msfconsole`)
 1. Launch Metasploit on your attacker instance:

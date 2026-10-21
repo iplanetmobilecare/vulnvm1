@@ -23,7 +23,7 @@ echo "[*] Updating package repositories..."
 apt-get update -y
 
 echo "[*] Installing dependencies & build tools..."
-apt-get install -y build-essential libcap-dev libssl-dev libpam0g-dev wget tar apache2 ufw net-tools
+apt-get install -y build-essential libcap-dev libssl-dev libpam0g-dev wget tar apache2 ufw net-tools nmap
 
 # ==============================================================================
 # 1. SETUP HTTP SERVICE (PORT 80)
@@ -32,68 +32,50 @@ echo "[*] Configuring HTTP Service (Apache2)..."
 systemctl enable apache2
 systemctl start apache2
 
-cat << 'EOF' > /var/www/html/index.html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cybetary Academy - Internal Gateway</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0f172a;
-            color: #e2e8f0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .card {
-            background: #1e293b;
-            padding: 2.5rem;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            max-width: 540px;
-            text-align: center;
-            border: 1px solid #334155;
-        }
-        h1 {
-            color: #38bdf8;
-            margin-top: 0;
-        }
-        p {
-            line-height: 1.6;
-            color: #94a3b8;
-        }
-        .badge {
-            display: inline-block;
-            background: #0284c7;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 9999px;
-            font-size: 0.85rem;
-            margin-bottom: 1rem;
-        }
-        .footer {
-            margin-top: 1.5rem;
-            font-size: 0.8rem;
-            color: #64748b;
-        }
-    </style>
-</head>
-<body>
-    <div class="card">
-        <span class="badge">Lab 1: Recon & Exploitation</span>
-        <h1>Cybetary Academy Gateway</h1>
-        <p>Welcome to the internal staging server. Authorized personnel only.</p>
-        <p>All activities are monitored and logged.</p>
-        <div class="footer">Server Status: Online | Port 80 / 21 Active</div>
-    </div>
-</body>
-</html>
+# Configure Apache Directory Listing (Indexes) on /var/www/html
+cat << 'EOF' > /etc/apache2/sites-available/000-default.conf
+<VirtualHost *:80>
+    ServerAdmin webmaster@localhost
+    DocumentRoot /var/www/html
+
+    <Directory /var/www/html>
+        Options +Indexes +FollowSymLinks
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
 EOF
+
+# Ensure autoindex module is enabled
+a2enmod autoindex || true
+
+# Rename or remove index.html so Apache shows the directory listing, or create a browsable /backup or /files folder
+# We keep index.html for gateway, AND create exposed directories that show directory listing:
+mkdir -p /var/www/html/backups
+mkdir -p /var/www/html/secret_notes
+
+cat << 'EOF' > /var/www/html/backups/db_backup.sql
+-- Cybetary Internal Database Backup
+-- Dump version 1.0.4
+-- Note to admin: update vsftpd service credentials before deployment
+CREATE DATABASE cybetary_staging;
+EOF
+
+cat << 'EOF' > /var/www/html/secret_notes/ftp_credentials.txt
+[FTP Server Config Notes]
+Service: vsftpd 2.3.4
+Internal Port: 21
+Notice: Server maintained by IT admin. Testing backdoor vulnerability lab.
+EOF
+
+# If you also want root / to show directory listing directly, we can remove index.html:
+rm -f /var/www/html/index.html
+
+systemctl restart apache2
+
 
 # ==============================================================================
 # 2. DOWNLOAD, COMPILE & INSTALL VSFTPD 2.3.4 (BACKDOORED)
@@ -104,14 +86,10 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
-# Download the authentic backdoored source archive
-# wget -q --show-progress https://raw.githubusercontent.com/nikdubois/vsftpd-2.3.4/master/vsftpd-2.3.4.tar.gz -O vsftpd-2.3.4.tar.gz || \
-# wget -q --show-progress https://github.com/nikdubois/vsftpd-2.3.4/raw/master/vsftpd-2.3.4.tar.gz -O vsftpd-2.3.4.tar.gz
-wget -O vsftpd-2.3.4.tar.gz \
-https://security.appspot.com/downloads/vsftpd-2.3.4.tar.gz
+# Download the authentic backdoored vsftpd-2.3.4 source code
+git clone https://security.appspot.com/downloads/vsftpd-2.3.4.tar.gz "$BUILD_DIR/vsftpd-2.3.4"
+cd "$BUILD_DIR/vsftpd-2.3.4"
 
-tar -xzf vsftpd-2.3.4.tar.gz
-cd vsftpd-2.3.4
 
 echo "[*] Patching Makefile to link required crypto and cap libraries..."
 # Ensure linking against crypt and cap libraries properly on modern Linux
